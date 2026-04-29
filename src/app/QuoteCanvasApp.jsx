@@ -13,6 +13,7 @@ import { AuthorPopover } from '../features/editor/popovers/AuthorPopover.jsx';
 import { WordPopover } from '../features/editor/popovers/WordPopover.jsx';
 import { StylePreviewCard } from '../features/style-grid/StylePreviewCard.jsx';
 import { analyzePhoto } from '../photo/analyzePhoto.js';
+import { getBackgroundRemovalErrorDetails, removeImageBackground } from '../photo/backgroundRemoval.js';
 import { generateSamplePhoto } from '../photo/samplePhoto.js';
 import { loadImage } from '../photo/loadImage.js';
 import { pickAccentForStyle } from '../photo/pickAccentForStyle.js';
@@ -25,6 +26,10 @@ export default function App() {
   const [screen, setScreen] = useState('upload'); // upload | input | grid | editor
   const [imageUrl, setImageUrl] = useState(null);
   const [imageElement, setImageElement] = useState(null);
+  const [cutoutImageUrl, setCutoutImageUrl] = useState(null);
+  const [backgroundRemovalStatus, setBackgroundRemovalStatus] = useState('idle');
+  const [backgroundRemovalProgress, setBackgroundRemovalProgress] = useState(null);
+  const [backgroundRemovalError, setBackgroundRemovalError] = useState('');
   const [photoAnalysis, setPhotoAnalysis] = useState(null);
   const [quote, setQuote] = useState('');
   const [author, setAuthor] = useState('');
@@ -47,6 +52,26 @@ export default function App() {
 
   const mainCanvasRef = useRef(null);
   const fileInputRef = useRef(null);
+  const cutoutUrlRef = useRef(null);
+  const backgroundRemovalRequestRef = useRef(0);
+
+  const resetBackgroundRemoval = useCallback(() => {
+    backgroundRemovalRequestRef.current += 1;
+    if (cutoutUrlRef.current) {
+      URL.revokeObjectURL(cutoutUrlRef.current);
+      cutoutUrlRef.current = null;
+    }
+    setCutoutImageUrl(null);
+    setBackgroundRemovalStatus('idle');
+    setBackgroundRemovalProgress(null);
+    setBackgroundRemovalError('');
+  }, []);
+
+  useEffect(() => () => {
+    if (cutoutUrlRef.current) {
+      URL.revokeObjectURL(cutoutUrlRef.current);
+    }
+  }, []);
 
   // Recompute words when quote/emphasis changes
   /* eslint-disable react-hooks/set-state-in-effect */
@@ -68,6 +93,7 @@ export default function App() {
   // Handle file upload
   const handleFile = async (file) => {
     if (!file) return;
+    resetBackgroundRemoval();
     const reader = new FileReader();
     reader.onload = async (e) => {
       const dataUrl = e.target.result;
@@ -86,6 +112,7 @@ export default function App() {
   };
 
   const handleSample = async () => {
+    resetBackgroundRemoval();
     const dataUrl = generateSamplePhoto();
     setImageUrl(dataUrl);
     try {
@@ -98,6 +125,52 @@ export default function App() {
       setScreen('input');
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleRemoveBackground = async () => {
+    if (!imageUrl || backgroundRemovalStatus === 'processing') return;
+
+    const requestId = backgroundRemovalRequestRef.current + 1;
+    backgroundRemovalRequestRef.current = requestId;
+    setBackgroundRemovalStatus('processing');
+    setBackgroundRemovalError('');
+    setBackgroundRemovalProgress(0);
+
+    try {
+      const blob = await removeImageBackground(imageUrl, {
+        cacheKey: imageUrl,
+        onProgress: (_key, current, total) => {
+          if (requestId === backgroundRemovalRequestRef.current && total > 0) {
+            setBackgroundRemovalProgress(current / total);
+          }
+        }
+      });
+
+      if (requestId !== backgroundRemovalRequestRef.current) return;
+
+      const url = URL.createObjectURL(blob);
+
+      if (requestId !== backgroundRemovalRequestRef.current) {
+        URL.revokeObjectURL(url);
+        return;
+      }
+
+      if (cutoutUrlRef.current) {
+        URL.revokeObjectURL(cutoutUrlRef.current);
+      }
+
+      cutoutUrlRef.current = url;
+      setCutoutImageUrl(url);
+      setBackgroundRemovalStatus('ready');
+      setBackgroundRemovalProgress(1);
+    } catch (error) {
+      if (requestId !== backgroundRemovalRequestRef.current) return;
+      console.error('Background removal failed', getBackgroundRemovalErrorDetails(error));
+      setCutoutImageUrl(null);
+      setBackgroundRemovalStatus('error');
+      setBackgroundRemovalProgress(null);
+      setBackgroundRemovalError('Background removal failed. Try a different photo or try again.');
     }
   };
 
@@ -355,9 +428,13 @@ export default function App() {
      INPUT SCREEN
   ============================================================ */
   if (screen === 'input') {
+    const removalProgressPercent = backgroundRemovalProgress === null
+      ? null
+      : Math.round(backgroundRemovalProgress * 100);
+
     return (
       <div className="min-h-screen w-full bg-[#0A0A0A] text-white flex flex-col">
-        <Header onBack={() => { setScreen('upload'); setImageUrl(null); setImageElement(null); }} />
+        <Header onBack={() => { setScreen('upload'); setImageUrl(null); setImageElement(null); resetBackgroundRemoval(); }} />
         <main className="flex-1 flex flex-col md:flex-row gap-6 px-5 py-6 max-w-6xl mx-auto w-full">
           <div className="md:w-1/2 flex-shrink-0">
             <div className="aspect-[4/5] rounded-2xl overflow-hidden bg-[#141414] border border-[#2a2a2a]">
@@ -369,6 +446,61 @@ export default function App() {
             >
               <ImageIcon className="w-3.5 h-3.5" /> Change photo
             </button>
+            <div className="mt-4 rounded-xl bg-[#141414] border border-[#2a2a2a] p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-sm font-medium text-white">Remove Background</div>
+                  <div className="text-xs text-white/45 mt-0.5">
+                    {backgroundRemovalStatus === 'ready'
+                      ? 'Transparent PNG ready'
+                      : backgroundRemovalStatus === 'processing'
+                        ? 'Processing locally'
+                        : 'Optional cutout for later'}
+                  </div>
+                </div>
+                {cutoutImageUrl && (
+                  <div
+                    className="w-10 h-10 rounded-lg border border-white/10 bg-[#0D0D0D] overflow-hidden flex-shrink-0"
+                    style={{
+                      backgroundImage: 'linear-gradient(45deg, #1f1f1f 25%, transparent 25%), linear-gradient(-45deg, #1f1f1f 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #1f1f1f 75%), linear-gradient(-45deg, transparent 75%, #1f1f1f 75%)',
+                      backgroundSize: '12px 12px',
+                      backgroundPosition: '0 0, 0 6px, 6px -6px, -6px 0'
+                    }}
+                  >
+                    <img src={cutoutImageUrl} alt="" className="w-full h-full object-contain" />
+                  </div>
+                )}
+              </div>
+
+              <button
+                onClick={handleRemoveBackground}
+                disabled={!imageUrl || backgroundRemovalStatus === 'processing'}
+                className="mt-3 w-full py-2.5 rounded-lg bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-white/80 hover:text-white text-sm font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Wand2 className="w-4 h-4" />
+                {backgroundRemovalStatus === 'processing' ? 'Removing...' : cutoutImageUrl ? 'Remove Again' : 'Remove Background'}
+              </button>
+
+              {backgroundRemovalStatus === 'processing' && (
+                <div className="mt-3">
+                  <div className="h-1.5 rounded-full bg-[#2a2a2a] overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-[#FFB547] transition-all"
+                      style={{ width: `${removalProgressPercent ?? 8}%` }}
+                    />
+                  </div>
+                  <div className="mt-1.5 text-[11px] text-white/40">
+                    {removalProgressPercent !== null ? `${removalProgressPercent}%` : 'Preparing model...'}
+                  </div>
+                </div>
+              )}
+
+              {backgroundRemovalStatus === 'error' && (
+                <div className="mt-3 text-xs text-[#FF8A8A] leading-relaxed">
+                  {backgroundRemovalError}
+                </div>
+              )}
+            </div>
             <input
               ref={fileInputRef}
               type="file"
