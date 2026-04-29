@@ -6,7 +6,7 @@ import { applyShadow, getShadow } from './shadows.js';
 import { applyCasing, computeBaseFontSize, measureLine, wrapLines } from './textLayout.js';
 
 export function renderDesign(canvas, design, isPreview = false) {
-  const { width, height, image, style, overrides = {}, words } = design;
+  const { width, height, image, cutoutImage, style, overrides = {}, words } = design;
   const ctx = canvas.getContext('2d');
   const dpr = isPreview ? 1 : (window.devicePixelRatio || 1);
   canvas.width = width * dpr;
@@ -551,65 +551,63 @@ export function renderDesign(canvas, design, isPreview = false) {
   // Used by Cutout Hero style and any style that sets decorations.subjectForeground
   if (S.decorations.subjectForeground && image && design.photo) {
     ctx.save();
-    const subX = (design.photo.subjectX ?? 0.5) * width;
-    const subY = (design.photo.subjectY ?? 0.5) * height;
-    // Subject ellipse — vertical-leaning (humans are taller than wide)
-    const ellipseW = Math.min(width, height) * 0.36;
-    const ellipseH = Math.min(width, height) * 0.55;
+    if (cutoutImage) {
+      drawImageCover(ctx, cutoutImage, 0, 0, width, height, imgOX, imgOY, imageZoom);
+    } else {
+      const subX = (design.photo.subjectX ?? 0.5) * width;
+      const subY = (design.photo.subjectY ?? 0.5) * height;
+      // Subject ellipse — vertical-leaning (humans are taller than wide)
+      const ellipseW = Math.min(width, height) * 0.36;
+      const ellipseH = Math.min(width, height) * 0.55;
 
-    // Create a soft-edged elliptical clipping path using a radial gradient mask
-    // Approach: draw the photo region inside an elliptical clip with a feathered alpha
-    const offCanvas = document.createElement('canvas');
-    offCanvas.width = width;
-    offCanvas.height = height;
-    const offCtx = offCanvas.getContext('2d');
+      // Create a soft-edged elliptical clipping path using a radial gradient mask
+      // Approach: draw the photo region inside an elliptical clip with a feathered alpha
+      const offCanvas = document.createElement('canvas');
+      offCanvas.width = width;
+      offCanvas.height = height;
+      const offCtx = offCanvas.getContext('2d');
 
-    // Re-paint photo at same zoom/offset as base
-    const imgZoom = overrides.imageZoom ?? 1;
-    const imgOX = overrides.imageOffsetX ?? 0;
-    const imgOY = overrides.imageOffsetY ?? 0;
-    const fitMode = 'cover';
-    const imgRatio = image.width / image.height;
-    const canvasRatio = width / height;
-    let drawW, drawH, drawX, drawY;
-    if (fitMode === 'cover') {
+      // Re-paint photo at same zoom/offset as base
+      const imgRatio = image.width / image.height;
+      const canvasRatio = width / height;
+      let drawW, drawH, drawX, drawY;
       if (imgRatio > canvasRatio) {
-        drawH = height * imgZoom;
+        drawH = height * imageZoom;
         drawW = drawH * imgRatio;
       } else {
-        drawW = width * imgZoom;
+        drawW = width * imageZoom;
         drawH = drawW / imgRatio;
       }
       drawX = (width - drawW) / 2 + imgOX * width;
       drawY = (height - drawH) / 2 + imgOY * height;
+      offCtx.drawImage(image, drawX, drawY, drawW, drawH);
+
+      // Build the soft elliptical alpha mask in a separate buffer
+      const maskCanvas = document.createElement('canvas');
+      maskCanvas.width = width;
+      maskCanvas.height = height;
+      const maskCtx = maskCanvas.getContext('2d');
+      const grad = maskCtx.createRadialGradient(subX, subY, 0, subX, subY, Math.max(ellipseW, ellipseH));
+      grad.addColorStop(0, 'rgba(0,0,0,1)');
+      grad.addColorStop(0.55, 'rgba(0,0,0,0.95)');
+      grad.addColorStop(0.85, 'rgba(0,0,0,0.4)');
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      maskCtx.fillStyle = grad;
+      // Stretch the gradient into an ellipse by transforming
+      maskCtx.save();
+      maskCtx.translate(subX, subY);
+      maskCtx.scale(ellipseW / Math.max(ellipseW, ellipseH), ellipseH / Math.max(ellipseW, ellipseH));
+      maskCtx.translate(-subX, -subY);
+      maskCtx.fillRect(0, 0, width, height);
+      maskCtx.restore();
+
+      // Composite: photo masked by alpha
+      offCtx.globalCompositeOperation = 'destination-in';
+      offCtx.drawImage(maskCanvas, 0, 0);
+
+      // Draw the masked subject layer on top of everything
+      ctx.drawImage(offCanvas, 0, 0);
     }
-    offCtx.drawImage(image, drawX, drawY, drawW, drawH);
-
-    // Build the soft elliptical alpha mask in a separate buffer
-    const maskCanvas = document.createElement('canvas');
-    maskCanvas.width = width;
-    maskCanvas.height = height;
-    const maskCtx = maskCanvas.getContext('2d');
-    const grad = maskCtx.createRadialGradient(subX, subY, 0, subX, subY, Math.max(ellipseW, ellipseH));
-    grad.addColorStop(0, 'rgba(0,0,0,1)');
-    grad.addColorStop(0.55, 'rgba(0,0,0,0.95)');
-    grad.addColorStop(0.85, 'rgba(0,0,0,0.4)');
-    grad.addColorStop(1, 'rgba(0,0,0,0)');
-    maskCtx.fillStyle = grad;
-    // Stretch the gradient into an ellipse by transforming
-    maskCtx.save();
-    maskCtx.translate(subX, subY);
-    maskCtx.scale(ellipseW / Math.max(ellipseW, ellipseH), ellipseH / Math.max(ellipseW, ellipseH));
-    maskCtx.translate(-subX, -subY);
-    maskCtx.fillRect(0, 0, width, height);
-    maskCtx.restore();
-
-    // Composite: photo masked by alpha
-    offCtx.globalCompositeOperation = 'destination-in';
-    offCtx.drawImage(maskCanvas, 0, 0);
-
-    // Draw the masked subject layer on top of everything
-    ctx.drawImage(offCanvas, 0, 0);
     ctx.restore();
   }
 

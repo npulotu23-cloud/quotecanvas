@@ -27,6 +27,7 @@ export default function App() {
   const [imageUrl, setImageUrl] = useState(null);
   const [imageElement, setImageElement] = useState(null);
   const [cutoutImageUrl, setCutoutImageUrl] = useState(null);
+  const [cutoutImageElement, setCutoutImageElement] = useState(null);
   const [backgroundRemovalStatus, setBackgroundRemovalStatus] = useState('idle');
   const [backgroundRemovalProgress, setBackgroundRemovalProgress] = useState(null);
   const [backgroundRemovalError, setBackgroundRemovalError] = useState('');
@@ -62,6 +63,7 @@ export default function App() {
       cutoutUrlRef.current = null;
     }
     setCutoutImageUrl(null);
+    setCutoutImageElement(null);
     setBackgroundRemovalStatus('idle');
     setBackgroundRemovalProgress(null);
     setBackgroundRemovalError('');
@@ -150,6 +152,13 @@ export default function App() {
       if (requestId !== backgroundRemovalRequestRef.current) return;
 
       const url = URL.createObjectURL(blob);
+      let cutoutImage;
+      try {
+        cutoutImage = await loadImage(url);
+      } catch (loadError) {
+        URL.revokeObjectURL(url);
+        throw loadError;
+      }
 
       if (requestId !== backgroundRemovalRequestRef.current) {
         URL.revokeObjectURL(url);
@@ -162,12 +171,14 @@ export default function App() {
 
       cutoutUrlRef.current = url;
       setCutoutImageUrl(url);
+      setCutoutImageElement(cutoutImage);
       setBackgroundRemovalStatus('ready');
       setBackgroundRemovalProgress(1);
     } catch (error) {
       if (requestId !== backgroundRemovalRequestRef.current) return;
       console.error('Background removal failed', getBackgroundRemovalErrorDetails(error));
       setCutoutImageUrl(null);
+      setCutoutImageElement(null);
       setBackgroundRemovalStatus('error');
       setBackgroundRemovalProgress(null);
       setBackgroundRemovalError('Background removal failed. Try a different photo or try again.');
@@ -331,9 +342,10 @@ export default function App() {
       overrides,
       words,
       author: quoteAnalysis?.author || '',
-      photo: photoAnalysis
+      photo: photoAnalysis,
+      cutoutImage: cutoutImageElement
     });
-  }, [screen, imageElement, styledForRender, overrides, words, quoteAnalysis, fmt, fontsReady, photoAnalysis]);
+  }, [screen, imageElement, styledForRender, overrides, words, quoteAnalysis, fmt, fontsReady, photoAnalysis, cutoutImageElement]);
 
   const handleShowFullPreview = () => {
     if (!mainCanvasRef.current) return;
