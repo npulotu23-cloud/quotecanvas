@@ -20,7 +20,7 @@ export function ColorControls({ style, overrides, updateOverride, photoAnalysis,
     return (
       <div className="flex flex-col gap-2">
         {/* Target selector — small pills */}
-        <div className="flex gap-1">
+        <div className="grid grid-cols-3 gap-1.5">
           {[
             { id: 'emphasis', label: 'Emphasis' },
             { id: 'connector', label: 'Connector' },
@@ -29,7 +29,7 @@ export function ColorControls({ style, overrides, updateOverride, photoAnalysis,
             <button
               key={t.id}
               onClick={() => setActiveColorTarget(t.id)}
-              className={`px-2.5 py-1 rounded-md text-[10px] font-medium ${
+              className={`min-h-10 px-2.5 py-2 rounded-md text-xs font-medium ${
                 activeColorTarget === t.id ? 'bg-[#FFB547] text-black' : 'bg-[#1a1a1a] text-white/60'
               }`}
             >
@@ -43,7 +43,7 @@ export function ColorControls({ style, overrides, updateOverride, photoAnalysis,
             <button
               key={i}
               onClick={() => updateOverride(overrideKey, c)}
-              className={`w-7 h-7 rounded-md flex-shrink-0 transition-transform ${
+              className={`w-10 h-10 rounded-md flex-shrink-0 transition-transform ${
                 targetCurrent && targetCurrent.toLowerCase() === c.toLowerCase()
                   ? 'ring-2 ring-[#FFB547] ring-offset-1 ring-offset-[#0D0D0D] scale-110'
                   : ''
@@ -51,7 +51,7 @@ export function ColorControls({ style, overrides, updateOverride, photoAnalysis,
               style={{ backgroundColor: c }}
             />
           ))}
-          <label className="w-7 h-7 rounded-md border border-[#2a2a2a] bg-gradient-to-br from-red-500 via-yellow-500 to-green-500 cursor-pointer relative overflow-hidden flex-shrink-0">
+          <label className="w-10 h-10 rounded-md border border-[#2a2a2a] bg-gradient-to-br from-red-500 via-yellow-500 to-green-500 cursor-pointer relative overflow-hidden flex-shrink-0">
             <input
               type="color"
               value={targetCurrent || '#ffffff'}

@@ -13,14 +13,14 @@ export function TypeControls({ style, overrides, updateOverride, quote, author, 
           onChange={(e) => onQuoteChange(e.target.value)}
           placeholder="Quote text"
           rows={2}
-          className="w-full border border-[#2a2a2a] rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-[#FFB547]/50 resize-none"
+          className="w-full min-h-20 border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#FFB547]/50 resize-none"
           style={{ backgroundColor: '#141414', color: '#ffffff', WebkitTextFillColor: '#ffffff' }}
         />
         <input
           value={author}
           onChange={(e) => onAuthorChange(e.target.value)}
           placeholder="Speaker"
-          className="w-full border border-[#2a2a2a] rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-[#FFB547]/50"
+          className="w-full min-h-11 border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#FFB547]/50"
           style={{ backgroundColor: '#141414', color: '#ffffff', WebkitTextFillColor: '#ffffff' }}
         />
         <CompactRow>

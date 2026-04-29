@@ -10,7 +10,7 @@ export function FormatControls({ overrides, updateOverride, compact = false }) {
           <button
             key={key}
             onClick={() => updateOverride('format', key)}
-            className={`flex-1 py-2 rounded-md border text-center transition-all ${
+            className={`flex-1 min-h-11 py-2 rounded-md border text-center transition-all ${
               current === key ? 'border-[#FFB547] bg-[#FFB547]/10' : 'border-[#2a2a2a]'
             }`}
           >

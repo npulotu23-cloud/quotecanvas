@@ -14,29 +14,29 @@ export function LayoutControls({ style, overrides, updateOverride, compact = fal
 
   if (compact) {
     return (
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col gap-4">
         {/* Compact anchor grid */}
-        <div className="flex flex-col gap-0.5 flex-shrink-0">
+        <div className="flex flex-col gap-1 flex-shrink-0">
           {anchors.map((row, ri) => (
-            <div key={ri} className="flex gap-0.5">
+            <div key={ri} className="grid grid-cols-3 gap-1.5 max-w-[132px]">
               {row.map(a => (
                 <button
                   key={a}
                   onClick={() => updateOverride('anchor', a)}
-                  className={`w-5 h-5 rounded-sm border ${
+                  className={`w-10 h-10 rounded-md border flex items-center justify-center ${
                     currentAnchor === a
                       ? 'border-[#FFB547] bg-[#FFB547]/20'
                       : 'border-[#2a2a2a]'
                   }`}
                 >
-                  <div className={`w-1 h-1 rounded-full mx-auto ${currentAnchor === a ? 'bg-[#FFB547]' : 'bg-white/30'}`} />
+                  <div className={`w-1.5 h-1.5 rounded-full ${currentAnchor === a ? 'bg-[#FFB547]' : 'bg-white/30'}`} />
                 </button>
               ))}
             </div>
           ))}
         </div>
         {/* Alignment buttons */}
-        <div className="flex gap-1 flex-shrink-0">
+        <div className="grid grid-cols-3 gap-2 flex-shrink-0">
           {[
             { id: 'left', icon: AlignLeft },
             { id: 'center', icon: AlignCenter },
@@ -45,16 +45,16 @@ export function LayoutControls({ style, overrides, updateOverride, compact = fal
             <button
               key={a.id}
               onClick={() => updateOverride('alignment', a.id)}
-              className={`p-1.5 rounded-md border ${
+              className={`min-h-11 rounded-md border flex items-center justify-center ${
                 currentAlign === a.id ? 'border-[#FFB547] bg-[#FFB547]/10 text-[#FFB547]' : 'border-[#2a2a2a] text-white/60'
               }`}
             >
-              <a.icon className="w-3.5 h-3.5" />
+              <a.icon className="w-4 h-4" />
             </button>
           ))}
         </div>
         {/* Offset sliders side by side */}
-        <div className="flex gap-2 flex-1 min-w-0">
+        <div className="flex flex-col gap-3 flex-1 min-w-0">
           <CompactSlider
             label="X"
             value={overrides.offsetX ?? 0}

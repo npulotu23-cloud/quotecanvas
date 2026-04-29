@@ -10,7 +10,7 @@ export function FilterControls({ overrides, updateOverride, compact = false }) {
           <button
             key={key}
             onClick={() => updateOverride('filter', key)}
-            className={`px-3 py-1.5 rounded-md text-[11px] font-medium whitespace-nowrap flex-shrink-0 ${
+            className={`min-h-10 px-3 py-2 rounded-md text-xs font-medium whitespace-nowrap flex-shrink-0 ${
               current === key
                 ? 'bg-[#FFB547] text-black'
                 : 'bg-[#1a1a1a] border border-[#2a2a2a] text-white/70'

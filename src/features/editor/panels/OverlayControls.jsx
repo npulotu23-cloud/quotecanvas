@@ -23,7 +23,7 @@ export function OverlayControls({ style, overrides, updateOverride, compact = fa
             <button
               key={t.id}
               onClick={() => updateOverride('overlayType', t.id)}
-              className={`px-2.5 py-1 rounded-md text-[10px] font-medium whitespace-nowrap flex-shrink-0 ${
+              className={`min-h-10 px-3 py-2 rounded-md text-xs font-medium whitespace-nowrap flex-shrink-0 ${
                 currentType === t.id ? 'bg-[#FFB547] text-black' : 'bg-[#1a1a1a] border border-[#2a2a2a] text-white/70'
               }`}
             >

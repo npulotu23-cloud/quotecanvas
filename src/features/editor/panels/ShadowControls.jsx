@@ -22,7 +22,7 @@ export function ShadowControls({ style, overrides, updateOverride, compact = fal
         <div className="flex items-center gap-2">
           <button
             onClick={() => updateOverride('shadowEnabled', !enabled)}
-            className={`px-2.5 py-1 rounded-md text-[10px] font-medium flex-shrink-0 ${
+            className={`min-h-10 px-3 py-2 rounded-md text-xs font-medium flex-shrink-0 ${
               enabled ? 'bg-[#FFB547] text-black' : 'bg-[#1a1a1a] border border-[#2a2a2a] text-white/60'
             }`}
           >
@@ -33,13 +33,13 @@ export function ShadowControls({ style, overrides, updateOverride, compact = fal
               <button
                 key={i}
                 onClick={() => updateOverride('shadowColor', c)}
-                className={`w-6 h-6 rounded-md flex-shrink-0 border ${
+                className={`w-10 h-10 rounded-md flex-shrink-0 border ${
                   (colorRaw || '').toLowerCase() === c.toLowerCase() ? 'border-[#FFB547] scale-110' : 'border-[#2a2a2a]'
                 }`}
                 style={{ backgroundColor: c }}
               />
             ))}
-            <label className="w-6 h-6 rounded-md border border-[#2a2a2a] bg-gradient-to-br from-red-500 via-yellow-500 to-green-500 cursor-pointer relative overflow-hidden flex-shrink-0">
+            <label className="w-10 h-10 rounded-md border border-[#2a2a2a] bg-gradient-to-br from-red-500 via-yellow-500 to-green-500 cursor-pointer relative overflow-hidden flex-shrink-0">
               <input
                 type="color"
                 value={colorRaw && colorRaw.startsWith('#') ? colorRaw : '#000000'}

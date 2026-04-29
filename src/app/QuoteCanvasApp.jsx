@@ -668,7 +668,7 @@ export default function App() {
   ============================================================ */
   if (screen === 'editor' && selectedStyle) {
     return (
-      <div className="min-h-screen w-full bg-[#0A0A0A] text-white flex flex-col">
+      <div className="h-[100dvh] min-h-[100svh] md:h-auto md:min-h-screen w-full bg-[#0A0A0A] text-white flex flex-col overflow-hidden md:overflow-visible">
         <Header
           onBack={() => setScreen('grid')}
           title={selectedStyle.name}
@@ -693,7 +693,7 @@ export default function App() {
             </>
           }
         />
-        <main className="flex-1 flex flex-col md:flex-row gap-0 md:gap-4 md:px-4 md:py-4 md:max-w-6xl md:mx-auto w-full overflow-hidden">
+        <main className="flex-1 min-h-0 flex flex-col md:flex-row gap-0 md:gap-4 md:px-4 md:py-4 md:max-w-6xl md:mx-auto w-full overflow-hidden">
           {/* Canvas area — fills available space, always visible */}
           <div className="flex-1 flex items-center justify-center p-3 md:p-4 min-h-0 overflow-hidden">
             <div
