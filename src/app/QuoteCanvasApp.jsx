@@ -21,6 +21,13 @@ import { rankStyles } from '../photo/rankStyles.js';
 import { analyzeQuote } from '../quote/analyzeQuote.js';
 import { suggestEmphasis } from '../quote/suggestEmphasis.js';
 
+function withoutPerWordOverrides(value) {
+  if (!value?.perWordOverrides) return value;
+  const next = { ...value };
+  delete next.perWordOverrides;
+  return next;
+}
+
 export default function App() {
   const fontsReady = useFonts();
   const [screen, setScreen] = useState('upload'); // upload | input | grid | editor
@@ -246,6 +253,17 @@ export default function App() {
       return next;
     });
   };
+
+  const handleQuoteTextChange = useCallback((nextQuote) => {
+    setQuote(nextQuote);
+    setTappedWordIndex(null);
+    setOverrides(prev => withoutPerWordOverrides(prev));
+    setHistory(prev => prev.map(withoutPerWordOverrides));
+  }, []);
+
+  const handleAuthorTextChange = useCallback((nextAuthor) => {
+    setAuthor(nextAuthor);
+  }, []);
 
   // Commits current override state to history (used after gesture ends)
   const commitOverrides = useCallback(() => {
@@ -734,7 +752,10 @@ export default function App() {
             setActiveTab={setActiveTab}
             image={imageElement}
             words={words}
+            quote={quote}
             author={quoteAnalysis?.author || ''}
+            onQuoteChange={handleQuoteTextChange}
+            onAuthorChange={handleAuthorTextChange}
             selectedStyleId={selectedStyleId}
             onSelectStyle={swapStyle}
             fontsReady={fontsReady}
@@ -750,7 +771,10 @@ export default function App() {
             setActiveTab={setActiveTab}
             image={imageElement}
             words={words}
+            quote={quote}
             author={quoteAnalysis?.author || ''}
+            onQuoteChange={handleQuoteTextChange}
+            onAuthorChange={handleAuthorTextChange}
             selectedStyleId={selectedStyleId}
             onSelectStyle={swapStyle}
             fontsReady={fontsReady}
@@ -785,7 +809,7 @@ export default function App() {
             onUpdate={(patch) => {
               Object.entries(patch).forEach(([k, v]) => updateOverride(k, v));
             }}
-            onUpdateText={(text) => setAuthor(text)}
+            onUpdateText={handleAuthorTextChange}
           />
         )}
 
