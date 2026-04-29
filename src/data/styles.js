@@ -389,6 +389,18 @@ export const STYLES = [
 
   // === SUBJECT-FOREGROUND family (speaker appears in front of text) ===
   {
+    id: 'stellar-legacy',
+    name: 'Stellar Legacy',
+    family: 'subject-foreground',
+    intensity: 'balanced',
+    typography: { fontPrimary: 'DM Serif Display', fontSecondary: 'Inter', fontAuthor: 'Inter', weightPrimary: 400, weightSecondary: 600, weightAuthor: 700, italicPrimary: false, casing: 'title', letterSpacing: 0.01, lineHeight: 1.08 },
+    colors: { emphasis: '#D4AF37', connector: '#F7F0DA', author: '#FFB547', accent: '#D4AF37', useEmphasisSystem: true },
+    layout: { anchor: 'center', textWidth: 0.88, paddingX: 0.06, paddingY: 0.08, alignment: 'center', authorPosition: 'below', authorCasing: 'upper', rotation: 0 },
+    overlay: { type: 'full-dark', darkness: 0.72, color: '#02040D' },
+    effects: { textShadow: true, shadowBlur: 18, shadowColor: 'rgba(0,0,0,0.78)', shadowOffsetX: 0, shadowOffsetY: 4, glow: false, stroke: false },
+    decorations: { quoteMarks: false, constellation: false, frame: false, divider: true, dividerStyle: 'line', dividerColor: '#D4AF37', subjectForeground: true, stellarField: true, stellarStarColor: '#F8E7B0', stellarGlowColor: '#D4AF37', stellarCoolGlowColor: '#3653A8', stellarStarCount: 96 }
+  },
+  {
     id: 'cutout-hero',
     name: 'Cutout Hero',
     family: 'subject-foreground',

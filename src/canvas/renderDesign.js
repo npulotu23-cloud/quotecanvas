@@ -1,5 +1,5 @@
 import { hexToRgb, relativeLuminance } from '../photo/color.js';
-import { drawAsymmetricShape, drawConstellation, drawDoubleFrame, drawGrainOverlay, drawHexFrame, drawLineBox, drawRibbon, drawStampFrame } from './decorations.js';
+import { drawAsymmetricShape, drawConstellation, drawDoubleFrame, drawGrainOverlay, drawHexFrame, drawLineBox, drawRibbon, drawStampFrame, drawStellarField } from './decorations.js';
 import { applyImageFilter, drawImageCover } from './image.js';
 import { drawOverlay } from './overlays.js';
 import { applyShadow, getShadow } from './shadows.js';
@@ -67,6 +67,14 @@ export function renderDesign(canvas, design, isPreview = false) {
   const shadow = getShadow(S, overrides);
 
   // Background decorations
+  if (S.decorations.stellarField) {
+    drawStellarField(ctx, width, height, {
+      starColor: S.decorations.stellarStarColor,
+      glowColor: S.decorations.stellarGlowColor,
+      coolGlowColor: S.decorations.stellarCoolGlowColor,
+      starCount: S.decorations.stellarStarCount
+    });
+  }
   if (S.decorations.constellation) {
     drawConstellation(ctx, width, height, S.decorations.constellationColor || '#FFD70044', S.decorations.constellationDensity || 'medium');
   }

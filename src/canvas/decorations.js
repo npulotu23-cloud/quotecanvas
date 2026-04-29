@@ -29,6 +29,78 @@ export function drawConstellation(ctx, w, h, color, density) {
   ctx.restore();
 }
 
+export function drawStellarField(ctx, w, h, options = {}) {
+  const {
+    starColor = '#F8E7B0',
+    glowColor = '#D4AF37',
+    coolGlowColor = '#3653A8',
+    starCount = 90
+  } = options;
+
+  const hash = (index, salt) => {
+    const value = Math.sin(index * 127.1 + salt * 311.7) * 43758.5453123;
+    return value - Math.floor(value);
+  };
+
+  ctx.save();
+
+  const deepWash = ctx.createRadialGradient(w * 0.5, h * 0.34, 0, w * 0.5, h * 0.48, Math.max(w, h) * 0.85);
+  deepWash.addColorStop(0, 'rgba(22,28,58,0.62)');
+  deepWash.addColorStop(0.45, 'rgba(8,12,30,0.28)');
+  deepWash.addColorStop(1, 'rgba(1,3,12,0.74)');
+  ctx.fillStyle = deepWash;
+  ctx.fillRect(0, 0, w, h);
+
+  const amberGlow = ctx.createRadialGradient(w * 0.76, h * 0.2, 0, w * 0.76, h * 0.2, Math.min(w, h) * 0.5);
+  amberGlow.addColorStop(0, `${glowColor}34`);
+  amberGlow.addColorStop(0.42, `${glowColor}16`);
+  amberGlow.addColorStop(1, `${glowColor}00`);
+  ctx.fillStyle = amberGlow;
+  ctx.fillRect(0, 0, w, h);
+
+  const coolGlow = ctx.createRadialGradient(w * 0.18, h * 0.72, 0, w * 0.18, h * 0.72, Math.min(w, h) * 0.55);
+  coolGlow.addColorStop(0, `${coolGlowColor}2A`);
+  coolGlow.addColorStop(0.5, `${coolGlowColor}10`);
+  coolGlow.addColorStop(1, `${coolGlowColor}00`);
+  ctx.fillStyle = coolGlow;
+  ctx.fillRect(0, 0, w, h);
+
+  for (let i = 0; i < starCount; i++) {
+    const x = hash(i, 1) * w;
+    const y = hash(i, 2) * h;
+    const depth = hash(i, 3);
+    const radius = Math.max(0.45, Math.min(w, h) * (0.00055 + depth * 0.00125));
+    const alpha = 0.18 + depth * 0.48;
+
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = starColor;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (depth > 0.86) {
+      ctx.globalAlpha = alpha * 0.42;
+      ctx.strokeStyle = starColor;
+      ctx.lineWidth = Math.max(0.4, radius * 0.35);
+      ctx.beginPath();
+      ctx.moveTo(x - radius * 3, y);
+      ctx.lineTo(x + radius * 3, y);
+      ctx.moveTo(x, y - radius * 3);
+      ctx.lineTo(x, y + radius * 3);
+      ctx.stroke();
+    }
+  }
+
+  ctx.globalAlpha = 1;
+  const lowerVignette = ctx.createLinearGradient(0, h * 0.35, 0, h);
+  lowerVignette.addColorStop(0, 'rgba(0,0,0,0)');
+  lowerVignette.addColorStop(1, 'rgba(0,0,0,0.5)');
+  ctx.fillStyle = lowerVignette;
+  ctx.fillRect(0, 0, w, h);
+
+  ctx.restore();
+}
+
 export function drawHexFrame(ctx, w, h, color) {
   ctx.save();
   ctx.strokeStyle = color;
