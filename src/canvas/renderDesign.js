@@ -46,6 +46,96 @@ function drawMaskedSubjectLayer(ctx, image, photo, width, height, imgOX, imgOY, 
   ctx.restore();
 }
 
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function getMaxLineWidth(lines, wordGap) {
+  return lines.reduce((max, line) => Math.max(max, measureLine(line, wordGap)), 0);
+}
+
+function getHorizontalTextStart(alignment, width, padX, textW, offsetX) {
+  const baseX = alignment === 'center'
+    ? (width - textW) / 2
+    : alignment === 'right'
+      ? width - padX - textW
+      : padX;
+  return baseX + (offsetX || 0) * width;
+}
+
+function getRectOverlap(a, b) {
+  if (!a || !b) return null;
+  const x1 = Math.max(a.x, b.x);
+  const y1 = Math.max(a.y, b.y);
+  const x2 = Math.min(a.x + a.w, b.x + b.w);
+  const y2 = Math.min(a.y + a.h, b.y + b.h);
+  if (x2 <= x1 || y2 <= y1) return null;
+  return { x: x1, y: y1, w: x2 - x1, h: y2 - y1 };
+}
+
+function getCutoutSubjectBox(cutoutImage, width, height, imgOX, imgOY, imageZoom) {
+  if (!cutoutImage) return null;
+
+  const maxSampleSize = 160;
+  const scale = Math.min(1, maxSampleSize / Math.max(width, height));
+  const sampleW = Math.max(1, Math.round(width * scale));
+  const sampleH = Math.max(1, Math.round(height * scale));
+  const sampleCanvas = document.createElement('canvas');
+  sampleCanvas.width = sampleW;
+  sampleCanvas.height = sampleH;
+  const sampleCtx = sampleCanvas.getContext('2d');
+  drawImageCover(sampleCtx, cutoutImage, 0, 0, sampleW, sampleH, imgOX, imgOY, imageZoom);
+
+  let data;
+  try {
+    data = sampleCtx.getImageData(0, 0, sampleW, sampleH).data;
+  } catch {
+    return null;
+  }
+
+  let minX = sampleW;
+  let minY = sampleH;
+  let maxX = -1;
+  let maxY = -1;
+  for (let y = 0; y < sampleH; y++) {
+    for (let x = 0; x < sampleW; x++) {
+      const alpha = data[(y * sampleW + x) * 4 + 3];
+      if (alpha > 24) {
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+      }
+    }
+  }
+
+  if (maxX < minX || maxY < minY) return null;
+
+  const pad = Math.max(2, Math.round(Math.min(sampleW, sampleH) * 0.02));
+  const x = clamp((minX - pad) / sampleW * width, 0, width);
+  const y = clamp((minY - pad) / sampleH * height, 0, height);
+  const right = clamp((maxX + pad) / sampleW * width, 0, width);
+  const bottom = clamp((maxY + pad) / sampleH * height, 0, height);
+  return { x, y, w: Math.max(0, right - x), h: Math.max(0, bottom - y) };
+}
+
+function getApproxSubjectBox(photo, width, height) {
+  if (!photo) return null;
+  const subX = (photo.subjectX ?? 0.5) * width;
+  const subY = (photo.subjectY ?? 0.5) * height;
+  const boxW = Math.min(width * 0.52, height * 0.42);
+  const boxH = Math.min(height * 0.72, width * 0.88);
+  const sideBias = photo.subjectSide === 'left' ? -0.04 : photo.subjectSide === 'right' ? 0.04 : 0;
+  const x = clamp(subX - boxW / 2 + sideBias * width, 0, width - boxW);
+  const y = clamp(subY - boxH * 0.38, 0, height - boxH);
+  return { x, y, w: boxW, h: boxH };
+}
+
+function getSubjectBox(cutoutImage, photo, width, height, imgOX, imgOY, imageZoom) {
+  return getCutoutSubjectBox(cutoutImage, width, height, imgOX, imgOY, imageZoom)
+    || getApproxSubjectBox(photo, width, height);
+}
+
 export function renderDesign(canvas, design, isPreview = false) {
   const { width, height, image, cutoutImage, style, overrides = {}, words } = design;
   const ctx = canvas.getContext('2d');
@@ -145,36 +235,110 @@ export function renderDesign(canvas, design, isPreview = false) {
     drawStampFrame(ctx, width, height, S.decorations.frameColor || '#0A0A0A', S.decorations.frameMargin || 0.05);
   }
 
-  // Compute text layout
-  const baseFontSize = computeBaseFontSize(design);
-  const textWidth = (overrides.textWidth ?? S.layout.textWidth) * width;
-  const lines = wrapLines(ctx, words, textWidth, S, baseFontSize, overrides);
-  const wordGap = lines.wordGap || baseFontSize * 0.32;
-  const lineHeightMul = overrides.lineHeight ?? S.typography.lineHeight;
-  const lineHeight = baseFontSize * lineHeightMul;
-  const totalTextHeight = lines.length * lineHeight;
-
   // Anchor
   const anchor = overrides.anchor ?? S.layout.anchor;
   const alignment = overrides.alignment ?? S.layout.alignment;
   const padX = S.layout.paddingX * width;
   const padY = S.layout.paddingY * height;
   const author = design.author;
-  const authorFontSize = Math.max(16, baseFontSize * 0.28);
-  const authorHeight = author ? authorFontSize * 1.5 : 0;
-
-  let blockY;
-  if (anchor.includes('top')) blockY = padY;
-  else if (anchor.includes('bottom')) blockY = height - padY - totalTextHeight - authorHeight;
-  else blockY = (height - totalTextHeight - authorHeight) / 2;
-
-  blockY += (overrides.offsetY || 0) * height;
-
-  // Author offsets/size (separate from quote)
   const authorOffsetX = overrides.authorOffsetX || 0;
   const authorOffsetY = overrides.authorOffsetY || 0;
   const authorSizeMul = overrides.authorSizeMultiplier || 1;
-  const authorFontSizeFinal = authorFontSize * authorSizeMul;
+
+  // Compute text layout. Subject-aware adjustments below update these local values only.
+  let baseFontSize = computeBaseFontSize(design);
+  let textWidth = (overrides.textWidth ?? S.layout.textWidth) * width;
+  let lines;
+  let wordGap;
+  let lineHeightMul;
+  let lineHeight;
+  let totalTextHeight;
+  let authorFontSize;
+  let authorHeight;
+  let authorFontSizeFinal;
+  let blockY;
+  let autoShiftY = 0;
+
+  function recomputeBlockY() {
+    if (anchor.includes('top')) blockY = padY;
+    else if (anchor.includes('bottom')) blockY = height - padY - totalTextHeight - authorHeight;
+    else blockY = (height - totalTextHeight - authorHeight) / 2;
+
+    blockY += (overrides.offsetY || 0) * height + autoShiftY;
+  }
+
+  function recomputeTextLayout(nextBaseFontSize = baseFontSize, nextTextWidth = textWidth) {
+    baseFontSize = nextBaseFontSize;
+    textWidth = nextTextWidth;
+    lines = wrapLines(ctx, words, textWidth, S, baseFontSize, overrides);
+    wordGap = lines.wordGap || baseFontSize * 0.32;
+    lineHeightMul = overrides.lineHeight ?? S.typography.lineHeight;
+    lineHeight = baseFontSize * lineHeightMul;
+    totalTextHeight = lines.length * lineHeight;
+    authorFontSize = Math.max(16, baseFontSize * 0.28);
+    authorHeight = author ? authorFontSize * 1.5 : 0;
+    authorFontSizeFinal = authorFontSize * authorSizeMul;
+    recomputeBlockY();
+  }
+
+  function getCurrentTextBox() {
+    const maxLineW = getMaxLineWidth(lines, wordGap);
+    return {
+      x: getHorizontalTextStart(alignment, width, padX, maxLineW, overrides.offsetX),
+      y: author && S.layout.authorPosition === 'above' ? blockY - authorHeight : blockY,
+      w: maxLineW,
+      h: totalTextHeight + authorHeight
+    };
+  }
+
+  function shiftTextBlock(deltaY) {
+    const textBox = getCurrentTextBox();
+    const minDelta = padY * 0.25 - textBox.y;
+    const maxDelta = height - padY * 0.25 - (textBox.y + textBox.h);
+    const clampedDelta = clamp(deltaY, minDelta, maxDelta);
+    if (Math.abs(clampedDelta) < 1) return false;
+    autoShiftY += clampedDelta;
+    recomputeBlockY();
+    return true;
+  }
+
+  recomputeTextLayout();
+
+  if (S.decorations.subjectForeground) {
+    const subjectBox = getSubjectBox(cutoutImage, design.photo, width, height, imgOX, imgOY, imageZoom);
+    const hasManualPosition = overrides.offsetX !== undefined || overrides.offsetY !== undefined;
+    const hasManualTextWidth = overrides.textWidth !== undefined;
+    const hasManualFontSize = overrides.fontSizeMultiplier !== undefined;
+    const skipAutoAdjustment = hasManualPosition && hasManualTextWidth && hasManualFontSize;
+    const autoStrength = (hasManualPosition || hasManualTextWidth || hasManualFontSize) ? 0.45 : 1;
+
+    if (subjectBox && subjectBox.w > 0 && subjectBox.h > 0 && !skipAutoAdjustment) {
+      const headZone = { ...subjectBox, h: subjectBox.h * 0.35 };
+      let textBox = getCurrentTextBox();
+      let headOverlap = getRectOverlap(textBox, headZone);
+
+      if (headOverlap) {
+        if (!hasManualPosition) {
+          const shift = -Math.min(height * 0.12, (headOverlap.h + height * 0.035) * autoStrength);
+          shiftTextBlock(shift);
+        }
+
+        textBox = getCurrentTextBox();
+        headOverlap = getRectOverlap(textBox, headZone);
+        if (headOverlap && !hasManualTextWidth) {
+          recomputeTextLayout(baseFontSize, textWidth * (1 - 0.1 * autoStrength));
+        }
+      } else if (getRectOverlap(textBox, subjectBox)) {
+        if (!hasManualFontSize) {
+          recomputeTextLayout(baseFontSize * (1 - 0.06 * autoStrength), textWidth);
+        } else if (!hasManualPosition) {
+          const textCenterY = textBox.y + textBox.h / 2;
+          const subjectCenterY = subjectBox.y + subjectBox.h / 2;
+          shiftTextBlock((textCenterY < subjectCenterY ? -1 : 1) * height * 0.045 * autoStrength);
+        }
+      }
+    }
+  }
 
   // Author drawing helper — handles all author overrides consistently
   function drawAuthorAt(ctx, author, baseAx, baseAy, alignment) {
