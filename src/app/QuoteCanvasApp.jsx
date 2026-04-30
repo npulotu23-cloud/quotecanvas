@@ -29,6 +29,23 @@ function withoutPerWordOverrides(value) {
   return next;
 }
 
+const PHOTO_SPECIFIC_OVERRIDE_KEYS = [
+  'imageZoom',
+  'imageOffsetX',
+  'imageOffsetY',
+  'imageRotation',
+  'imageRotationOverride'
+];
+
+function withoutPhotoSpecificOverrides(value) {
+  if (!value) return value;
+  const next = { ...value };
+  PHOTO_SPECIFIC_OVERRIDE_KEYS.forEach(key => {
+    delete next[key];
+  });
+  return next;
+}
+
 const ONBOARDING_STORAGE_KEY = 'quotecanvas:onboarding:v1:completed';
 const ONBOARDING_STEP_COUNT = 7;
 
@@ -86,6 +103,7 @@ export default function App() {
   const fileInputRef = useRef(null);
   const cutoutUrlRef = useRef(null);
   const backgroundRemovalRequestRef = useRef(0);
+  const replacePhotoRequestRef = useRef(0);
 
   const completeOnboarding = useCallback(() => {
     storeOnboardingComplete();
@@ -169,6 +187,54 @@ export default function App() {
         setScreen('input');
       } catch (err) {
         console.error('Image load failed', err);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const resetPhotoSpecificOverrides = useCallback(() => {
+    setOverrides(prev => {
+      const next = withoutPhotoSpecificOverrides(prev);
+      setHistory(h => {
+        const trimmed = h.slice(0, historyIndex + 1);
+        trimmed.push(next);
+        return trimmed.slice(-30);
+      });
+      setHistoryIndex(i => Math.min(i + 1, 29));
+      return next;
+    });
+  }, [historyIndex]);
+
+  const handleReplacePhoto = async (file) => {
+    if (!file) return;
+
+    const requestId = replacePhotoRequestRef.current + 1;
+    replacePhotoRequestRef.current = requestId;
+
+    resetBackgroundRemoval();
+    resetPhotoSpecificOverrides();
+    setTappedWordIndex(null);
+    setAuthorTapped(false);
+    setFullPreviewUrl(null);
+    setShowFullPreview(false);
+    setPhotoAnalysis(null);
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      if (requestId !== replacePhotoRequestRef.current) return;
+      const dataUrl = e.target.result;
+      try {
+        const img = await loadImage(dataUrl);
+        if (requestId !== replacePhotoRequestRef.current) return;
+        setImageUrl(dataUrl);
+        setImageElement(img);
+        const analysis = await analyzePhoto(img);
+        if (requestId !== replacePhotoRequestRef.current) return;
+        setPhotoAnalysis(analysis);
+        setScreen('editor');
+      } catch (err) {
+        if (requestId !== replacePhotoRequestRef.current) return;
+        console.error('Image replacement failed', err);
       }
     };
     reader.readAsDataURL(file);
@@ -813,6 +879,7 @@ export default function App() {
             selectedStyleId={selectedStyleId}
             onSelectStyle={swapStyle}
             fontsReady={fontsReady}
+            onReplacePhoto={() => fileInputRef.current?.click()}
           />
 
           {/* Desktop sidebar — unchanged */}
@@ -832,8 +899,19 @@ export default function App() {
             selectedStyleId={selectedStyleId}
             onSelectStyle={swapStyle}
             fontsReady={fontsReady}
+            onReplacePhoto={() => fileInputRef.current?.click()}
           />
         </main>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            handleReplacePhoto(e.target.files?.[0]);
+            e.target.value = '';
+          }}
+        />
 
         {/* WORD POPOVER */}
         {tappedWordIndex !== null && words[tappedWordIndex] && (

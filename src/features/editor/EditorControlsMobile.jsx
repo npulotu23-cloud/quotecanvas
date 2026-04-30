@@ -1,7 +1,7 @@
 import { EDITOR_TABS } from './editorTabs.js';
 import { TabContent } from './TabContent.jsx';
 
-export function EditorControlsMobile({ style, overrides, updateOverride, photoAnalysis, activeTab, setActiveTab, image, words, quote, author, onQuoteChange, onAuthorChange, selectedStyleId, onSelectStyle, fontsReady }) {
+export function EditorControlsMobile({ style, overrides, updateOverride, photoAnalysis, activeTab, setActiveTab, image, words, quote, author, onQuoteChange, onAuthorChange, selectedStyleId, onSelectStyle, fontsReady, onReplacePhoto }) {
   return (
     <div className="md:hidden flex-shrink-0 bg-[#0D0D0D] border-t border-[#1a1a1a] flex flex-col max-h-[48dvh]">
       {/* Tab bar */}
@@ -40,6 +40,7 @@ export function EditorControlsMobile({ style, overrides, updateOverride, photoAn
           selectedStyleId={selectedStyleId}
           onSelectStyle={onSelectStyle}
           fontsReady={fontsReady}
+          onReplacePhoto={onReplacePhoto}
         />
       </div>
     </div>

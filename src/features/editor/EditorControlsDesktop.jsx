@@ -1,7 +1,7 @@
 import { EDITOR_TABS } from './editorTabs.js';
 import { TabContent } from './TabContent.jsx';
 
-export function EditorControlsDesktop({ style, overrides, updateOverride, photoAnalysis, activeTab, setActiveTab, image, words, quote, author, onQuoteChange, onAuthorChange, selectedStyleId, onSelectStyle, fontsReady }) {
+export function EditorControlsDesktop({ style, overrides, updateOverride, photoAnalysis, activeTab, setActiveTab, image, words, quote, author, onQuoteChange, onAuthorChange, selectedStyleId, onSelectStyle, fontsReady, onReplacePhoto }) {
   return (
     <aside className="hidden md:flex md:w-[360px] flex-col bg-[#0D0D0D] border border-[#1a1a1a] rounded-2xl overflow-hidden h-[75vh] flex-shrink-0">
       <div className="flex gap-1 overflow-x-auto px-3 py-2 border-b border-[#1a1a1a] scrollbar-none">
@@ -35,6 +35,7 @@ export function EditorControlsDesktop({ style, overrides, updateOverride, photoA
           selectedStyleId={selectedStyleId}
           onSelectStyle={onSelectStyle}
           fontsReady={fontsReady}
+          onReplacePhoto={onReplacePhoto}
         />
       </div>
     </aside>
