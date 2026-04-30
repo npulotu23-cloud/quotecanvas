@@ -401,6 +401,18 @@ export const STYLES = [
     decorations: { quoteMarks: false, constellation: false, frame: false, divider: true, dividerStyle: 'line', dividerColor: '#D4AF37', subjectForeground: true, stellarField: true, stellarStarColor: '#F8E7B0', stellarGlowColor: '#D4AF37', stellarCoolGlowColor: '#3653A8', stellarStarCount: 96 }
   },
   {
+    id: 'championship-poster',
+    name: 'Championship Poster',
+    family: 'subject-foreground',
+    intensity: 'bold',
+    typography: { fontPrimary: 'Archivo Black', fontSecondary: 'Anton', fontAuthor: 'Inter', weightPrimary: 900, weightSecondary: 400, weightAuthor: 800, italicPrimary: false, casing: 'upper', letterSpacing: -0.01, lineHeight: 0.92 },
+    colors: { emphasis: '#D4AF37', connector: '#F7F0DA', author: '#FFB547', accent: '#D4AF37', useEmphasisSystem: true },
+    layout: { anchor: 'center', textWidth: 0.94, paddingX: 0.04, paddingY: 0.07, alignment: 'center', authorPosition: 'below', authorCasing: 'upper', rotation: 0 },
+    overlay: { type: 'radial-dark', darkness: 0.68, color: '#030303' },
+    effects: { textShadow: true, shadowBlur: 24, shadowColor: 'rgba(0,0,0,0.82)', shadowOffsetX: 0, shadowOffsetY: 5, glow: false, stroke: true, strokeColor: '#050505', strokeWidth: 3 },
+    decorations: { quoteMarks: false, constellation: false, frame: false, divider: true, dividerStyle: 'line', dividerColor: '#D4AF37', subjectForeground: true, asymShape: 'quarter-circle', asymShapeColor: 'rgba(212,175,55,0.16)', asymShapePosition: 'top-right' }
+  },
+  {
     id: 'cutout-hero',
     name: 'Cutout Hero',
     family: 'subject-foreground',
