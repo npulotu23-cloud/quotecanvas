@@ -11,6 +11,7 @@ import { EditorControlsDesktop } from '../features/editor/EditorControlsDesktop.
 import { EditorControlsMobile } from '../features/editor/EditorControlsMobile.jsx';
 import { AuthorPopover } from '../features/editor/popovers/AuthorPopover.jsx';
 import { WordPopover } from '../features/editor/popovers/WordPopover.jsx';
+import { OnboardingTutorial } from '../features/onboarding/OnboardingTutorial.jsx';
 import { StylePreviewCard } from '../features/style-grid/StylePreviewCard.jsx';
 import { analyzePhoto } from '../photo/analyzePhoto.js';
 import { getBackgroundRemovalErrorDetails, removeImageBackground } from '../photo/backgroundRemoval.js';
@@ -28,9 +29,32 @@ function withoutPerWordOverrides(value) {
   return next;
 }
 
+const ONBOARDING_STORAGE_KEY = 'quotecanvas:onboarding:v1:completed';
+const ONBOARDING_STEP_COUNT = 7;
+
+function hasCompletedOnboarding() {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.localStorage.getItem(ONBOARDING_STORAGE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function storeOnboardingComplete() {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(ONBOARDING_STORAGE_KEY, 'true');
+  } catch {
+    // If storage is unavailable, still let the user continue for this session.
+  }
+}
+
 export default function App() {
   const fontsReady = useFonts();
   const [screen, setScreen] = useState('upload'); // upload | input | grid | editor
+  const [showOnboarding, setShowOnboarding] = useState(() => !hasCompletedOnboarding());
+  const [onboardingStep, setOnboardingStep] = useState(0);
   const [imageUrl, setImageUrl] = useState(null);
   const [imageElement, setImageElement] = useState(null);
   const [cutoutImageUrl, setCutoutImageUrl] = useState(null);
@@ -62,6 +86,36 @@ export default function App() {
   const fileInputRef = useRef(null);
   const cutoutUrlRef = useRef(null);
   const backgroundRemovalRequestRef = useRef(0);
+
+  const completeOnboarding = useCallback(() => {
+    storeOnboardingComplete();
+    setShowOnboarding(false);
+  }, []);
+
+  const handleOnboardingNext = useCallback(() => {
+    setOnboardingStep(step => Math.min(step + 1, ONBOARDING_STEP_COUNT - 1));
+  }, []);
+
+  const handleOnboardingBack = useCallback(() => {
+    setOnboardingStep(step => Math.max(step - 1, 0));
+  }, []);
+
+  const onboardingOverlay = showOnboarding ? (
+    <OnboardingTutorial
+      step={onboardingStep}
+      onNext={handleOnboardingNext}
+      onBack={handleOnboardingBack}
+      onSkip={completeOnboarding}
+      onFinish={completeOnboarding}
+    />
+  ) : null;
+
+  const withOnboarding = (content) => (
+    <>
+      {content}
+      {onboardingOverlay}
+    </>
+  );
 
   const resetBackgroundRemoval = useCallback(() => {
     backgroundRemovalRequestRef.current += 1;
@@ -395,7 +449,7 @@ export default function App() {
      UPLOAD SCREEN
   ============================================================ */
   if (screen === 'upload') {
-    return (
+    return withOnboarding(
       <div className="min-h-screen w-full bg-[#0A0A0A] text-white flex flex-col">
         <Header />
         <main className="flex-1 flex flex-col items-center justify-center px-5 py-8">
@@ -462,7 +516,7 @@ export default function App() {
       ? null
       : Math.round(backgroundRemovalProgress * 100);
 
-    return (
+    return withOnboarding(
       <div className="min-h-screen w-full bg-[#0A0A0A] text-white flex flex-col">
         <Header onBack={() => { setScreen('upload'); setImageUrl(null); setImageElement(null); resetBackgroundRemoval(); }} />
         <main className="flex-1 flex flex-col md:flex-row gap-6 px-5 py-6 max-w-6xl mx-auto w-full">
@@ -628,7 +682,7 @@ export default function App() {
      STYLE GRID SCREEN
   ============================================================ */
   if (screen === 'grid') {
-    return (
+    return withOnboarding(
       <div className="min-h-screen w-full bg-[#0A0A0A] text-white flex flex-col">
         <Header onBack={() => setScreen('input')} title="Pick a style" />
         <main className="flex-1 px-4 py-5 max-w-5xl mx-auto w-full">
@@ -667,7 +721,7 @@ export default function App() {
      EDITOR SCREEN
   ============================================================ */
   if (screen === 'editor' && selectedStyle) {
-    return (
+    return withOnboarding(
       <div className="h-[100dvh] min-h-[100svh] md:h-auto md:min-h-screen w-full bg-[#0A0A0A] text-white flex flex-col overflow-hidden md:overflow-visible">
         <Header
           onBack={() => setScreen('grid')}
