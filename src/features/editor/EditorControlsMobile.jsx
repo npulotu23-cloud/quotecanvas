@@ -21,7 +21,7 @@ export function EditorControlsMobile({ style, overrides, updateOverride, photoAn
       </div>
       {/* Compact tab content scrolls independently of the canvas. */}
       <div
-        className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
+        className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 pt-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))]"
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
         <TabContent

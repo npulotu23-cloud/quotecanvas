@@ -1,7 +1,7 @@
 import { hexToRgb, relativeLuminance } from '../photo/color.js';
 import { drawAsymmetricShape, drawConstellation, drawDoubleFrame, drawGrainOverlay, drawHexFrame, drawLineBox, drawRibbon, drawStampFrame, drawStellarField } from './decorations.js';
 import { applyImageFilter, drawImageCover, hasImageFilter } from './image.js';
-import { drawOverlay } from './overlays.js';
+import { drawOverlay, drawTint } from './overlays.js';
 import { applyShadow, getShadow } from './shadows.js';
 import { applyCasing, computeBaseFontSize, measureLine, wrapLines } from './textLayout.js';
 
@@ -63,6 +63,11 @@ export function renderDesign(canvas, design, isPreview = false) {
   const imgOY = overrides.imageOffsetY ?? 0;
   const filterKey = overrides.filter ?? 'original';
   const shouldFilterImage = hasImageFilter(filterKey);
+  const tint = {
+    enabled: overrides.tintEnabled === true,
+    color: overrides.tintColor ?? '#F2F0EC',
+    strength: overrides.tintStrength ?? 0.35
+  };
 
   // Background
   ctx.fillStyle = S.overlay.type === 'full-light' ? (S.overlay.color || '#F2F0EC') : '#000000';
@@ -74,6 +79,8 @@ export function renderDesign(canvas, design, isPreview = false) {
     // Brightness/contrast/saturation via filter key
     applyImageFilter(ctx, 0, 0, width, height, filterKey, dpr);
   }
+
+  drawTint(ctx, width, height, tint);
 
   // Overlay
   const overlayDarkness = overrides.overlayDarkness ?? S.overlay.darkness;
@@ -609,12 +616,21 @@ export function renderDesign(canvas, design, isPreview = false) {
         drawMaskedSubjectLayer(foregroundCtx, image, design.photo, width, height, imgOX, imgOY, imageZoom, dpr);
       }
       applyImageFilter(foregroundCtx, 0, 0, width, height, filterKey, dpr);
+      drawTint(foregroundCtx, width, height, { ...tint, clipToContent: true });
       ctx.drawImage(foregroundCanvas, 0, 0, width, height);
     } else if (cutoutImage) {
-      drawImageCover(ctx, cutoutImage, 0, 0, width, height, imgOX, imgOY, imageZoom);
+      if (tint.enabled) {
+        const { canvas: foregroundCanvas, ctx: foregroundCtx } = createScaledCanvas(width, height, dpr);
+        drawImageCover(foregroundCtx, cutoutImage, 0, 0, width, height, imgOX, imgOY, imageZoom);
+        drawTint(foregroundCtx, width, height, { ...tint, clipToContent: true });
+        ctx.drawImage(foregroundCanvas, 0, 0, width, height);
+      } else {
+        drawImageCover(ctx, cutoutImage, 0, 0, width, height, imgOX, imgOY, imageZoom);
+      }
     } else {
       const { canvas: offCanvas, ctx: offCtx } = createScaledCanvas(width, height);
       drawMaskedSubjectLayer(offCtx, image, design.photo, width, height, imgOX, imgOY, imageZoom);
+      drawTint(offCtx, width, height, { ...tint, clipToContent: true });
       ctx.drawImage(offCanvas, 0, 0);
     }
     ctx.restore();

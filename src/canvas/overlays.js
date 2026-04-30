@@ -1,3 +1,23 @@
+function clampAlpha(value) {
+  if (!Number.isFinite(value)) return 0;
+  return Math.min(1, Math.max(0, value));
+}
+
+export function drawTint(ctx, w, h, tint) {
+  if (!tint?.enabled) return;
+  const strength = clampAlpha(tint.strength ?? 0);
+  if (strength <= 0) return;
+
+  ctx.save();
+  ctx.globalAlpha = strength;
+  if (tint.clipToContent) {
+    ctx.globalCompositeOperation = 'source-atop';
+  }
+  ctx.fillStyle = tint.color || '#F2F0EC';
+  ctx.fillRect(0, 0, w, h);
+  ctx.restore();
+}
+
 export function drawOverlay(ctx, w, h, overlay, photo) {
   if (!overlay || overlay.type === 'none') return;
   ctx.save();
