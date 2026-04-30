@@ -136,6 +136,25 @@ function getSubjectBox(cutoutImage, photo, width, height, imgOX, imgOY, imageZoo
     || getApproxSubjectBox(photo, width, height);
 }
 
+function getSmartAnchorShift(subjectBox, textBox, height, strength = 1) {
+  const subjectCenterY = subjectBox.y + subjectBox.h / 2;
+  const textCenterY = textBox.y + textBox.h / 2;
+  const subjectRatio = subjectCenterY / height;
+  const maxShift = height * 0.04 * strength;
+  let targetTextCenterY;
+
+  if (subjectRatio < 0.42) {
+    targetTextCenterY = height * 0.62;
+  } else if (subjectRatio > 0.58) {
+    targetTextCenterY = height * 0.38;
+  } else {
+    const direction = textCenterY < subjectCenterY ? -1 : 1;
+    return direction * height * 0.018 * strength;
+  }
+
+  return clamp(targetTextCenterY - textCenterY, -maxShift, maxShift);
+}
+
 export function renderDesign(canvas, design, isPreview = false) {
   const { width, height, image, cutoutImage, style, overrides = {}, words } = design;
   const ctx = canvas.getContext('2d');
@@ -307,19 +326,26 @@ export function renderDesign(canvas, design, isPreview = false) {
   if (S.decorations.subjectForeground) {
     const subjectBox = getSubjectBox(cutoutImage, design.photo, width, height, imgOX, imgOY, imageZoom);
     const hasManualPosition = overrides.offsetX !== undefined || overrides.offsetY !== undefined;
+    const hasManualVerticalPosition = overrides.offsetY !== undefined || overrides.anchor !== undefined;
     const hasManualTextWidth = overrides.textWidth !== undefined;
     const hasManualFontSize = overrides.fontSizeMultiplier !== undefined;
     const skipAutoAdjustment = hasManualPosition && hasManualTextWidth && hasManualFontSize;
     const autoStrength = (hasManualPosition || hasManualTextWidth || hasManualFontSize) ? 0.45 : 1;
 
     if (subjectBox && subjectBox.w > 0 && subjectBox.h > 0 && !skipAutoAdjustment) {
+      if (!hasManualVerticalPosition) {
+        const smartAnchorStrength = (hasManualTextWidth || hasManualFontSize) ? 0.55 : 1;
+        shiftTextBlock(getSmartAnchorShift(subjectBox, getCurrentTextBox(), height, smartAnchorStrength));
+      }
+
       const headZone = { ...subjectBox, h: subjectBox.h * 0.35 };
       let textBox = getCurrentTextBox();
       let headOverlap = getRectOverlap(textBox, headZone);
 
       if (headOverlap) {
         if (!hasManualPosition) {
-          const shift = -Math.min(height * 0.12, (headOverlap.h + height * 0.035) * autoStrength);
+          const remainingShift = Math.max(height * 0.04, height * 0.14 - Math.abs(autoShiftY));
+          const shift = -Math.min(remainingShift, (headOverlap.h + height * 0.035) * autoStrength);
           shiftTextBlock(shift);
         }
 
